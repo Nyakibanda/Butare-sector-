@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="rw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ubwitabire - Umurenge</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --paper:#F6F3EC; --card:#FFFFFF; --ink:#22302B; --ink-soft:#5B6960;
+    --pine:#355E4F; --pine-dark:#24443A; --pine-tint:#E7EEEA;
+    --brass:#B8863B; --brass-tint:#F3E9D6; --rust:#A8452F; --rust-tint:#F5E4DE;
+    --navy:#2C4A6E; --navy-tint:#E5EBF2; --line:#DEDACB;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; min-height:100vh; -webkit-tap-highlight-color:transparent;}
+  #app{max-width:480px;margin:0 auto;padding:18px 16px 48px;}
+  header{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--line);}
+  .brand h1{font-family:'Fraunces', serif; font-weight:600; font-size:20px; margin:0 0 2px; letter-spacing:-0.01em;}
+  .brand p{margin:0; font-size:12.5px; color:var(--ink-soft);}
+  .clock{font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:500; text-align:right; color:var(--pine-dark); white-space:nowrap;}
+  .clock .date{display:block; font-size:10.5px; color:var(--ink-soft); font-weight:400; margin-top:2px;}
+  .mode-switch{text-align:right; margin-bottom:18px;}
+  .mode-switch button{background:none; border:none; color:var(--ink-soft); font-family:'IBM Plex Sans', sans-serif; font-size:13px; text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:6px 2px;}
+  .section-label{font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin:0 0 12px; color:var(--pine-dark);}
+  .grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:22px;}
+  .opt-btn{background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:14px 10px; font-family:'IBM Plex Sans', sans-serif; font-size:14.5px; font-weight:500; color:var(--ink); text-align:left; cursor:pointer; transition:border-color .15s, background .15s;}
+  .opt-btn.selected{border-color:var(--pine); background:var(--pine-tint); color:var(--pine-dark);}
+  .opt-empty{grid-column:1 / -1; text-align:center; padding:28px 16px; color:var(--ink-soft); font-size:14px; border:1.5px dashed var(--line); border-radius:10px;}
+  .actions{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .action-btn{padding:18px 8px; border-radius:10px; border:none; font-family:'Fraunces', serif; font-size:17px; font-weight:600; cursor:pointer;}
+  .action-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .action-btn:not(:disabled):active{transform:scale(0.98);}
+  .action-btn.in{background:var(--pine); color:#fff;}
+  .action-btn.out{background:var(--brass); color:#fff;}
+  .status-line{font-size:12.5px; color:var(--ink-soft); text-align:center; min-height:18px; margin-bottom:6px;}
+  .stamp{background:var(--card); border:1.5px solid var(--pine); border-radius:12px; padding:18px; margin-top:16px; text-align:center;}
+  .stamp .who{font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:4px;}
+  .stamp .what{font-size:13px; color:var(--pine-dark); font-weight:500; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px;}
+  .stamp .time{font-family:'IBM Plex Mono', monospace; font-size:26px; color:var(--ink);}
+  .stamp .loc{font-size:12px; color:var(--ink-soft); margin-top:8px;}
+  .stamp.err{border-color:var(--rust);}
+  .stamp.err .what{color:var(--rust);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:16px;}
+  .row{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  input[type=text], input[type=date], input[type=month], select{flex:1; font-family:'IBM Plex Sans', sans-serif; font-size:14px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); min-width:110px;}
+  .btn{font-family:'IBM Plex Sans', sans-serif; font-size:13.5px; font-weight:600; padding:10px 14px; border-radius:8px; border:none; background:var(--pine); color:#fff; cursor:pointer; white-space:nowrap;}
+  .btn.ghost{background:var(--pine-tint); color:var(--pine-dark);}
+  .btn.navy{background:var(--navy); color:#fff;}
+  .chip-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{display:flex; align-items:center; gap:6px; background:var(--pine-tint); color:var(--pine-dark); font-size:13px; padding:6px 8px 6px 12px; border-radius:20px;}
+  .chip.school{background:var(--navy-tint); color:var(--navy);}
+  .chip button{background:currentColor; color:#fff; border:none; width:18px; height:18px; border-radius:50%; font-size:12px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .chip button span{color:var(--card);}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{text-align:left; font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); padding:7px 4px; border-bottom:1.5px solid var(--line);}
+  td{padding:8px 4px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace;}
+  td.name{font-family:'IBM Plex Sans', sans-serif; font-weight:500;}
+  .late,.low{color:var(--rust);}
+  .ontime,.high{color:var(--pine-dark);}
+  .mid{color:var(--brass);}
+  .dash{color:var(--ink-soft);}
+  .empty-state{text-align:center; padding:24px; color:var(--ink-soft); font-size:13.5px;}
+  .loading{text-align:center; padding:30px; color:var(--ink-soft); font-size:13.5px;}
+  .tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+  .pct-big{font-family:'Fraunces', serif; font-size:28px; font-weight:600; color:var(--pine-dark);}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Turatangura&hellip;</div></div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyD9riMK-1uC-ZsnuI8eB-UM5eyH_XlzZwY",
+    authDomain: "ep-nyakibanda-attendence-d1bef.firebaseapp.com",
+    projectId: "ep-nyakibanda-attendence-d1bef",
+    storageBucket: "ep-nyakibanda-attendence-d1bef.firebasestorage.app",
+    messagingSenderId: "706038371750",
+    appId: "1:706038371750:web:803a0f2ed93d940d686b67"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+<script>
+(function(){
+  const WEEKDAY_LABELS = ['Mbere','Kabiri','Gatatu','Kane','Gatanu'];
+  const el = document.getElementById('app');
+
+  // ---------- state ----------
+  let schools = [];
+  let config = { sectorName:'Umurenge', sectorAdminCodes:['umurenge'], lateAfter:'07:50', leaveBefore:'17:00', terms:[] };
+  let screen = 'chooseSchool'; // chooseSchool, employee, adminLogin, sectorAdmin, schoolAdmin
+  let empSchoolId = null;
+  let empSelectedId = null;
+  let lastStamp = null;
+  let locStatusMsg = '';
+  let adminAuthError = '';
+  let role = null; // 'sector' | 'school'
+  let currentSchoolId = null; // for schoolAdmin screen (also used when sector drills into a school)
+  let sectorTab = 'schools'; // schools, report, settings
+  let schoolTab = 'employees'; // employees, gps, attendance, report
+  let attTab = 'day'; // day, week, month, term
+  let periodDate = new Date().toISOString().slice(0,10);
+  let periodMonth = new Date().toISOString().slice(0,7);
+  let selectedTermIdx = 0;
+  let dayRecords = [];
+  let weekDates = [];
+  let weekRecords = {};
+  let rangeStats = null; // {perEmployee:[{name,present,pct}], schoolPct, workdays}
+  let sectorReportRows = null; // [{school, pct, present, expected}]
+  let newSchoolName = '';
+  let newSchoolCode = '';
+
+  // ---------- firestore ----------
+  async function loadSchools(){
+    try{
+      const snap = await db.collection('sSchools').get();
+      schools = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    }catch(e){ schools = []; }
+  }
+  async function loadConfig(){
+    try{
+      const doc = await db.collection('sSectorConfig').doc('main').get();
+      if(doc.exists){ config = Object.assign(config, doc.data()); }
+      else { await db.collection('sSectorConfig').doc('main').set(config); }
+    }catch(e){}
+  }
+  async function saveConfig(){
+    try{ await db.collection('sSectorConfig').doc('main').set(config); }catch(e){}
+  }
+  async function saveSchool(school){
+    try{
+      if(school.id){
+        const {id, ...data} = school;
+        await db.collection('sSchools').doc(id).set(data);
+      } else {
+        const ref = await db.collection('sSchools').add(school);
+        school.id = ref.id;
+      }
+    }catch(e){}
+  }
+  async function deleteSchoolDoc(id){
+    try{ await db.collection('sSchools').doc(id).delete(); }catch(e){}
+  }
+  async function loadRecordsRange(schoolId, startDate, endDate){
+    try{
+      const snap = await db.collection('sAttendance')
+        .where('schoolId','==',schoolId)
+        .where('date','>=',startDate)
+        .where('date','<=',endDate)
+        .get();
+      return snap.docs.map(d=>d.data());
+    }catch(e){ return []; }
+  }
+  async function saveRecord(record){
+    try{ await db.collection('sAttendance').add(record); }catch(e){}
+  }
+
+  // ---------- utils ----------
+  function fmtTime(iso){ const d=new Date(iso); return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  function hhmm(iso){ const d=new Date(iso); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  function fmtClock(d){ return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  function fmtDateLong(d){ return d.toLocaleDateString('rw-RW',{weekday:'long', year:'numeric', month:'long', day:'numeric'}); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function mondayOf(dateStr){ const d=new Date(dateStr+'T00:00:00'); const day=d.getDay(); const diff=(day===0)?-6:(1-day); d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10); }
+  function weekDatesFrom(mondayStr){ const out=[]; for(let i=0;i<5;i++){ const d=new Date(mondayStr+'T00:00:00'); d.setDate(d.getDate()+i); out.push(d.toISOString().slice(0,10)); } return out; }
+  function shortDate(dateStr){ const d=new Date(dateStr+'T00:00:00'); return d.getDate()+'/'+(d.getMonth()+1); }
+  function monthRange(ym){ const [y,m]=ym.split('-').map(Number); const start=`${ym}-01`; const lastDay=new Date(y,m,0).getDate(); const end=`${ym}-${String(lastDay).padStart(2,'0')}`; return [start,end]; }
+  function countWeekdays(startStr, endStr){
+    let count=0; let d=new Date(startStr+'T00:00:00'); const end=new Date(endStr+'T00:00:00');
+    while(d<=end){ const day=d.getDay(); if(day>=1 && day<=5) count++; d.setDate(d.getDate()+1); }
+    return count;
+  }
+  function distanceMeters(lat1,lon1,lat2,lon2){
+    const R=6371000, toRad=x=>x*Math.PI/180;
+    const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+    const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  function getLocation(){
+    return new Promise((resolve)=>{
+      if(!navigator.geolocation){ resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos)=> resolve({lat:pos.coords.latitude, lng:pos.coords.longitude}),
+        ()=> resolve(null), {enableHighAccuracy:true, timeout:10000}
+      );
+    });
+  }
+  function pctClass(p){ if(p>=90) return 'high'; if(p>=75) return 'mid'; return 'low'; }
+  function getSchool(id){ return schools.find(s=>s.id===id); }
+
+  // ---------- employee flow ----------
+  function chooseSchool(id){ empSchoolId=id; empSelectedId=null; lastStamp=null; locStatusMsg=''; screen='employee'; render(); }
+  function selectEmployee(id){ empSelectedId=(empSelectedId===id)?null:id; lastStamp=null; locStatusMsg=''; render(); }
+
+  async function logAttendance(type){
+    const school = getSchool(empSchoolId);
+    const emp = (school.employees||[]).find(e=>e.id===empSelectedId);
+    if(!emp) return;
+    render(true);
+    const loc = await getLocation();
+    if(!school.location){
+      locStatusMsg = 'Iki kigo ntikiragaragaza aho giherereye kuri GPS. Bwira admin w\'ikigo kubishyiraho.';
+      empSelectedId=null; render(); return;
+    }
+    if(!loc){
+      locStatusMsg = 'Ntibyashobotse kubona aho uri. Emera uruhushya rwa location muri telephone yawe hanyuma ugerageze nanone.';
+      render(); return;
+    }
+    const dist = distanceMeters(loc.lat, loc.lng, school.location.lat, school.location.lng);
+    if(dist > school.location.radius){
+      locStatusMsg = 'Uracyari kure y\'ikigo (uri ku ntera ya ~' + Math.round(dist) + 'm).';
+      empSelectedId=null; render(); return;
+    }
+    locStatusMsg='';
+    const now = new Date();
+    const record = { schoolId: school.id, employeeId: emp.id, employeeName: emp.name, type, time: now.toISOString(), date: now.toISOString().slice(0,10), lat: loc.lat, lng: loc.lng };
+    await saveRecord(record);
+    lastStamp = record; empSelectedId=null; render();
+  }
+
+  // ---------- admin auth ----------
+  function goAdminLogin(){ screen='adminLogin'; adminAuthError=''; render(); }
+  async function checkAdminCode(code){
+    const norm = (code||'').trim().toLowerCase();
+    if(!norm){ adminAuthError='Andika ijambo ry\'ibanga.'; render(); return; }
+    if((config.sectorAdminCodes||[]).map(c=>c.toLowerCase()).includes(norm)){
+      role='sector'; await enterSectorAdmin(); return;
+    }
+    const school = schools.find(s => (s.adminCode||'').toLowerCase()===norm);
+    if(school){ role='school'; currentSchoolId=school.id; await enterSchoolAdmin(); return; }
+    adminAuthError = 'Ijambo ry\'ibanga siryo. Ongera ugerageze.';
+    render();
+  }
+  async function enterSectorAdmin(){ screen='sectorAdmin'; sectorTab='schools'; render(); }
+  async function enterSchoolAdmin(){
+    screen='schoolAdmin'; schoolTab='employees'; attTab='day'; periodDate=new Date().toISOString().slice(0,10);
+    render(true);
+    await loadDayRecords();
+    render();
+  }
+  function backToLanding(){ screen='chooseSchool'; empSchoolId=null; empSelectedId=null; render(); }
+  function backToSectorFromSchool(){ if(role==='sector'){ screen='sectorAdmin'; render(); } else { backToLanding(); } }
+
+  // ---------- school management (sector admin) ----------
+  async function addSchool(){
+    const name=(newSchoolName||'').trim(); const code=(newSchoolCode||'').trim();
+    if(!name || !code) return;
+    const school = {name, adminCode:code, employees:[], location:null};
+    await saveSchool(school);
+    schools.push(school);
+    newSchoolName=''; newSchoolCode='';
+    render();
+  }
+  async function removeSchool(id){
+    await deleteSchoolDoc(id);
+    schools = schools.filter(s=>s.id!==id);
+    render();
+  }
+  function openSchoolFromSector(id){ currentSchoolId=id; enterSchoolAdmin(); }
+
+  // ---------- employees within a school ----------
+  async function addEmployeeToSchool(name){
+    name=(name||'').trim(); if(!name) return;
+    const school = getSchool(currentSchoolId);
+    const id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    school.employees = school.employees||[];
+    school.employees.push({id,name});
+    school.employees.sort((a,b)=>a.name.localeCompare(b.name));
+    await saveSchool(school);
+    render();
+  }
+  async function removeEmployeeFromSchool(id){
+    const school = getSchool(currentSchoolId);
+    school.employees = (school.employees||[]).filter(e=>e.id!==id);
+    await saveSchool(school);
+    render();
+  }
+  async function captureSchoolLocation(){
+    const statusEl = document.getElementById('loc-status');
+    if(statusEl) statusEl.textContent = 'Turashaka aho uri ubu\u2026';
+    const loc = await getLocation();
+    if(!loc){ if(statusEl) statusEl.textContent = 'Ntibyashobotse kubona GPS.'; return; }
+    const school = getSchool(currentSchoolId);
+    const radius = school.location ? school.location.radius : 150;
+    school.location = {lat:loc.lat, lng:loc.lng, radius, setAt:new Date().toISOString()};
+    await saveSchool(school);
+    render();
+  }
+  async function updateSchoolRadius(val){
+    const r = parseInt(val,10); if(!r || r<10) return;
+    const school = getSchool(currentSchoolId);
+    if(!school.location) return;
+    school.location.radius = r;
+    await saveSchool(school);
+    render();
+  }
+
+  // ---------- attendance loading ----------
+  async function loadDayRecords(){
+    dayRecords = await loadRecordsRange(currentSchoolId, periodDate, periodDate);
+  }
+  async function loadWeekRecords(){
+    const monday = mondayOf(periodDate);
+    weekDates = weekDatesFrom(monday);
+    const all = await loadRecordsRange(currentSchoolId, weekDates[0], weekDates[4]);
+    weekRecords = {}; weekDates.forEach(d=>weekRecords[d]=[]);
+    all.forEach(r=>{ if(weekRecords[r.date]) weekRecords[r.date].push(r); });
+  }
+  async function loadRangeStats(startDate, endDate){
+    const school = getSchool(currentSchoolId);
+    const employees = school.employees||[];
+    const records = await loadRecordsRange(currentSchoolId, startDate, endDate);
+    const workdays = countWeekdays(startDate, endDate);
+    const byEmpDay = {}; // empId -> Set(dates present)
+    records.forEach(r=>{
+      if(r.type!=='in') return;
+      byEmpDay[r.employeeId] = byEmpDay[r.employeeId]||new Set();
+      byEmpDay[r.employeeId].add(r.date);
+    });
+    const perEmployee = employees.map(e=>{
+      const present = byEmpDay[e.id] ? byEmpDay[e.id].size : 0;
+      const pct = workdays>0 ? Math.round((present/workdays)*100) : 0;
+      return {name:e.name, present, workdays, pct};
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+    const totalPresent = perEmployee.reduce((s,e)=>s+e.present,0);
+    const totalExpected = employees.length*workdays;
+    const schoolPct = totalExpected>0 ? Math.round((totalPresent/totalExpected)*100) : 0;
+    rangeStats = {perEmployee, schoolPct, workdays, totalPresent, totalExpected};
+  }
+  async function switchAttTab(tab){
+    attTab = tab; render(true);
+    if(tab==='day'){ await loadDayRecords(); }
+    else if(tab==='week'){ await loadWeekRecords(); }
+    else if(tab==='month'){ const [s,eD]=monthRange(periodMonth); await loadRangeStats(s,eD); }
+    else if(tab==='term'){
+      const term = config.terms[selectedTermIdx];
+      if(term) await loadRangeStats(term.start, term.end); else rangeStats=null;
+    }
+    render();
+  }
+  async function changePeriodDate(val){ periodDate=val; if(attTab==='day') await loadDayRecords(); else if(attTab==='week') await loadWeekRecords(); render(); }
+  async function changePeriodMonth(val){ periodMonth=val; const [s,eD]=monthRange(val); await loadRangeStats(s,eD); render(); }
+  async function changeTerm(idx){ selectedTermIdx=parseInt(idx,10); const term=config.terms[selectedTermIdx]; if(term) await loadRangeStats(term.start, term.end); render(); }
+
+  function summarizeDay(records){
+    const byEmp={};
+    records.forEach(r=>{
+      if(!byEmp[r.employeeId]) byEmp[r.employeeId]={name:r.employeeName, in:null, out:null};
+      if(r.type==='in'){ if(!byEmp[r.employeeId].in || r.time<byEmp[r.employeeId].in) byEmp[r.employeeId].in=r.time; }
+      else { if(!byEmp[r.employeeId].out || r.time>byEmp[r.employeeId].out) byEmp[r.employeeId].out=r.time; }
+    });
+    return Object.values(byEmp).sort((a,b)=>a.name.localeCompare(b.name));
+  }
+
+  // ---------- term settings ----------
+  async function addTerm(name,start,end){
+    if(!name||!start||!end) return;
+    config.terms = config.terms||[];
+    config.terms.push({name,start,end});
+    await saveConfig(); render();
+  }
+  async function removeTerm(idx){
+    config.terms.splice(idx,1);
+    await saveConfig(); render();
+  }
+  async function addSectorAdminCode(code){
+    code=(code||'').trim(); if(!code) return;
+    config.sectorAdminCodes = config.sectorAdminCodes||[];
+    config.sectorAdminCodes.push(code);
+    await saveConfig(); render();
+  }
+  async function removeSectorAdminCode(idx){
+    config.sectorAdminCodes.splice(idx,1);
+    await saveConfig(); render();
+  }
+  async function updateSectorName(name){
+    config.sectorName = name; await saveConfig();
+  }
+
+  // ---------- sector report ----------
+  async function loadSectorReport(period){
+    let start, end;
+    const today = new Date().toISOString().slice(0,10);
+    if(period==='day'){ start=today; end=today; }
+    else if(period==='week'){ const mon=mondayOf(today); const wd=weekDatesFrom(mon); start=wd[0]; end=wd[4]; }
+    else if(period==='month'){ const [s,e]=monthRange(new Date().toISOString().slice(0,7)); start=s; end=e; }
+    else if(period==='term'){ const term=config.terms[selectedTermIdx]; if(!term){ sectorReportRows=[]; return; } start=term.start; end=term.end; }
+    const workdays = countWeekdays(start,end);
+    const rows = [];
+    for(const school of schools){
+      const employees = school.employees||[];
+      const records = await loadRecordsRange(school.id, start, end);
+      const byEmpDay={};
+      records.forEach(r=>{ if(r.type!=='in') return; byEmpDay[r.employeeId]=byEmpDay[r.employeeId]||new Set(); byEmpDay[r.employeeId].add(r.date); });
+      const totalPresent = Object.values(byEmpDay).reduce((s,set)=>s+set.size,0);
+      const totalExpected = employees.length*workdays;
+      const pct = totalExpected>0 ? Math.round((totalPresent/totalExpected)*100) : 0;
+      rows.push({id:school.id, name:school.name, pct, totalPresent, totalExpected, empCount:employees.length});
+    }
+    sectorReportRows = rows.sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  async function switchSectorTab(tab){
+    sectorTab=tab; render(true);
+    if(tab==='report'){ await loadSectorReport(attTab); }
+    render();
+  }
+  async function changeSectorReportPeriod(period){
+    attTab=period; render(true); await loadSectorReport(period); render();
+  }
+
+  // ---------- render: employee side ----------
+  function renderChooseSchool(){
+    const grid = schools.length===0
+      ? `<div class="opt-empty">Nta bigo birabikwa. Admin w'Umurenge agomba kubanza kongera ibigo.</div>`
+      : schools.map(s=>`<button class="opt-btn" data-school="${s.id}">${escapeHtml(s.name)}</button>`).join('');
+    return `
+      <div class="mode-switch"><button id="to-admin">Umuyobozi &rarr;</button></div>
+      <p class="section-label">Hitamo ikigo cyawe</p>
+      <div class="grid">${grid}</div>
+    `;
+  }
+  function renderEmployeeScreen(){
+    const school = getSchool(empSchoolId);
+    if(!school) return renderChooseSchool();
+    const employees = school.employees||[];
+    const grid = employees.length===0
+      ? `<div class="opt-empty">Nta bakozi barabikwa muri iki kigo.</div>`
+      : employees.map(e=>`<button class="opt-btn ${e.id===empSelectedId?'selected':''}" data-emp="${e.id}">${escapeHtml(e.name)}</button>`).join('');
+    const canAct = !!empSelectedId;
+    const selEmp = employees.find(e=>e.id===empSelectedId);
+    const stampHtml = lastStamp ? `
+      <div class="stamp"><div class="who">${escapeHtml(lastStamp.employeeName)}</div>
+      <div class="what">${lastStamp.type==='in'?'Yinjiye':'Yasohotse'}</div>
+      <div class="time">${fmtTime(lastStamp.time)}</div>
+      <div class="loc">Aho ari byabonetse (GPS yemejwe)</div></div>` : '';
+    const errHtml = locStatusMsg ? `
+      <div class="stamp err"><div class="what">Ntibyakunze</div>
+      <div style="font-size:14px; color:var(--ink);">${escapeHtml(locStatusMsg)}</div></div>` : '';
+    return `
+      <div class="mode-switch"><button id="to-school-list">&larr; Hindura ikigo</button></div>
+      <p class="section-label">${escapeHtml(school.name)} &mdash; Hitamo izina ryawe</p>
+      <div class="grid">${grid}</div>
+      <div class="actions">
+        <button class="action-btn in" id="btn-in" ${canAct?'':'disabled'}>Injira</button>
+        <button class="action-btn out" id="btn-out" ${canAct?'':'disabled'}>Sohoka</button>
+      </div>
+      <div class="status-line">${selEmp ? 'Watoranyije '+escapeHtml(selEmp.name) : ''}</div>
+      ${errHtml}${stampHtml}
+    `;
+  }
+  function renderAdminLogin(){
+    return `
+      <div class="mode-switch"><button id="to-school-list-2">&larr; Subira</button></div>
+      <p class="section-label">Injira nk'Umuyobozi</p>
+      <div class="card">
+        <div class="row"><input type="text" id="admin-code" placeholder="Andika ijambo ry'ibanga ryawe" autocomplete="off"></div>
+        ${adminAuthError ? `<p style="font-size:13px; color:var(--rust); margin:0 0 10px;">${escapeHtml(adminAuthError)}</p>` : ''}
+        <button class="btn" id="submit-code">Injira</button>
+      </div>
+    `;
+  }
+
+  // ---------- render: sector admin ----------
+  function renderSectorAdmin(){
+    const tabs = `
+      <div class="tabs">
+        <button class="btn ${sectorTab==='schools'?'':'ghost'}" id="tab-schools">Ibigo</button>
+        <button class="btn ${sectorTab==='report'?'':'ghost'}" id="tab-report">Raporo</button>
+        <button class="btn ${sectorTab==='settings'?'':'ghost'}" id="tab-settings">Igenamiterere</button>
+      </div>`;
+    let body='';
+    if(sectorTab==='schools') body = renderSectorSchools();
+    else if(sectorTab==='report') body = renderSectorReport();
+    else body = renderSectorSettings();
+    return `
+      <div class="mode-switch"><button id="to-school-list-3">&larr; Sohoka</button></div>
+      <p class="section-label">${escapeHtml(config.sectorName)} &mdash; Umuyobozi w'Umurenge</p>
+      ${tabs}${body}
+    `;
+  }
+  function renderSectorSchools(){
+    const list = schools.length===0 ? `<p style="font-size:13px; color:var(--ink-soft);">Nta kigo cyongewemo.</p>` :
+      schools.map(s=>`
+        <div class="row" style="justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:10px;">
+          <div>
+            <strong>${escapeHtml(s.name)}</strong><br>
+            <span style="font-size:12px; color:var(--ink-soft);">Abakozi: ${(s.employees||[]).length} &middot; GPS: ${s.location?'Yashyizweho':'Ntabwo yashyizweho'}</span>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn navy" data-open-school="${s.id}">Fungura</button>
+            <button class="btn" style="background:var(--rust);" data-remove-school="${s.id}">Siba</button>
+          </div>
+        </div>
+      `).join('');
+    return `
+      <div class="card">
+        <p class="section-label" style="font-size:14px;">Ongeraho ikigo gishya</p>
+        <div class="row"><input type="text" id="new-school-name" placeholder="Izina ry'ikigo"></div>
+        <div class="row"><input type="text" id="new-school-code" placeholder="Ijambo ry'ibanga ry'admin w'ikigo"></div>
+        <button class="btn" id="add-school">Ongeraho ikigo</button>
+      </div>
+      <div class="card">${list}</div>
+    `;
+  }
+  function renderSectorReport(){
+    const periodBtns = `
+      <div class="tabs">
+        <button class="btn ${attTab==='day'?'':'ghost'}" data-speriod="day">Umunsi</button>
+        <button class="btn ${attTab==='week'?'':'ghost'}" data-speriod="week">Icyumweru</button>
+        <button class="btn ${attTab==='month'?'':'ghost'}" data-speriod="month">Ukwezi</button>
+        <button class="btn ${attTab==='term'?'':'ghost'}" data-speriod="term">Igihembwe</button>
+      </div>`;
+    let termPicker = '';
+    if(attTab==='term'){
+      termPicker = (config.terms||[]).length===0
+        ? `<p style="font-size:13px; color:var(--rust);">Nta bihembwe byashyizweho. Jya kuri "Igenamiterere" ubishyireho.</p>`
+        : `<div class="row"><select id="term-select">${config.terms.map((t,i)=>`<option value="${i}" ${i===selectedTermIdx?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}</select></div>`;
+    }
+    if(!sectorReportRows) return `${periodBtns}${termPicker}<div class="loading">Turabika&hellip;</div>`;
+    const rows = sectorReportRows.length===0 ? `<div class="empty-state">Nta makuru.</div>` :
+      `<table><thead><tr><th>Ikigo</th><th>Ijanisha</th><th>Abakozi</th></tr></thead><tbody>
+        ${sectorReportRows.map(r=>`<tr><td class="name">${escapeHtml(r.name)}</td><td class="${pctClass(r.pct)}">${r.pct}%</td><td>${r.empCount}</td></tr>`).join('')}
+      </tbody></table>`;
+    const avgPct = sectorReportRows.length ? Math.round(sectorReportRows.reduce((s,r)=>s+r.pct,0)/sectorReportRows.length) : 0;
+    return `${periodBtns}${termPicker}
+      <div class="card">
+        <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 4px;">Ijanisha rusange ry'Umurenge</p>
+        <div class="pct-big ${pctClass(avgPct)}">${avgPct}%</div>
+      </div>
+      <div class="card">${rows}</div>
+    `;
+  }
+  function renderSectorSettings(){
+    const codes = (config.sectorAdminCodes||[]).map((c,i)=>`<div class="chip">${escapeHtml(c)} <button data-rm-code="${i}"><span>&times;</span></button></div>`).join('');
+    const terms = (config.terms||[]).map((t,i)=>`
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:13px;">${escapeHtml(t.name)}: ${t.start} &rarr; ${t.end}</span>
+        <button class="btn" style="background:var(--rust);" data-rm-term="${i}">Siba</button>
+      </div>`).join('');
+    return `
+      <div class="card">
+        <p class="section-label" style="font-size:14px;">Izina ry'Umurenge</p>
+        <div class="row"><input type="text" id="sector-name" value="${escapeHtml(config.sectorName)}"><button class="btn" id="save-sector-name">Bika</button></div>
+      </div>
+      <div class="card">
+        <p class="section-label" style="font-size:14px;">Amajambo y'ibanga y'abayobozi b'Umurenge</p>
+        <div class="chip-list" style="margin-bottom:10px;">${codes}</div>
+        <div class="row"><input type="text" id="new-sector-code" placeholder="Ijambo ry'ibanga rishya"><button class="btn" id="add-sector-code">Ongeraho</button></div>
+      </div>
+      <div class="card">
+        <p class="section-label" style="font-size:14px;">Ibihembwe (Terms)</p>
+        ${terms}
+        <div class="row"><input type="text" id="term-name" placeholder="Izina (nka Igihembwe cya 1)"></div>
+        <div class="row"><input type="date" id="term-start"><input type="date" id="term-end"></div>
+        <button class="btn" id="add-term">Ongeraho igihembwe</button>
+      </div>
+    `;
+  }
+
+  // ---------- render: school admin ----------
+  function renderSchoolAdmin(){
+    const school = getSchool(currentSchoolId);
+    if(!school) return renderChooseSchool();
+    const tabs = `
+      <div class="tabs">
+        <button class="btn ${schoolTab==='employees'?'':'ghost'}" id="tab-employees">Abakozi</button>
+        <button class="btn ${schoolTab==='gps'?'':'ghost'}" id="tab-gps">GPS</button>
+        <button class="btn ${schoolTab==='attendance'?'':'ghost'}" id="tab-attendance">Ubwitabire</button>
+      </div>`;
+    let body='';
+    if(schoolTab==='employees') body = renderSchoolEmployees(school);
+    else if(schoolTab==='gps') body = renderSchoolGps(school);
+    else body = renderSchoolAttendance(school);
+    return `
+      <div class="mode-switch"><button id="back-from-school">&larr; ${role==='sector'?'Subira ku bigo':'Sohoka'}</button></div>
+      <p class="section-label">${escapeHtml(school.name)}</p>
+      ${tabs}${body}
+    `;
+  }
+  function renderSchoolEmployees(school){
+    const chips = (school.employees||[]).length===0 ? `<span style="font-size:13px; color:var(--ink-soft);">Nta mukozi warongewemo.</span>` :
+      school.employees.map(e=>`<div class="chip">${escapeHtml(e.name)} <button data-rm-emp="${e.id}"><span>&times;</span></button></div>`).join('');
+    return `
+      <div class="card">
+        <div class="row"><input type="text" id="new-emp-name" placeholder="Izina ry'umukozi mushya"><button class="btn" id="add-emp">Ongeraho</button></div>
+        <div class="chip-list">${chips}</div>
+      </div>
+    `;
+  }
+  function renderSchoolGps(school){
+    return `
+      <div class="card">
+        ${school.location ? `
+          <p style="font-size:13px; margin:0 0 10px;">Byashyizweho: ${new Date(school.location.setAt).toLocaleString('rw-RW')}<br>Intera yemewe: <strong>${school.location.radius} m</strong></p>
+        ` : `<p style="font-size:13px; color:var(--rust); margin:0 0 10px;">Ntiwarashyiraho aho iki kigo giherereye.</p>`}
+        <div class="row"><button class="btn" id="capture-loc">${school.location?'Hindura aho kigo giherereye (uri hano ubu)':'Emeza aho kigo giherereye (uri hano ubu)'}</button></div>
+        ${school.location ? `<div class="row"><input type="text" id="radius-input" value="${school.location.radius}" style="max-width:100px;"><span style="font-size:13px; color:var(--ink-soft);">metero</span><button class="btn" id="save-radius">Bika</button></div>` : ''}
+        <p id="loc-status" style="font-size:12px; color:var(--ink-soft); margin:6px 0 0;"></p>
+      </div>
+    `;
+  }
+  function renderSchoolAttendance(school){
+    const periodBtns = `
+      <div class="tabs">
+        <button class="btn ${attTab==='day'?'':'ghost'}" data-atab="day">Umunsi</button>
+        <button class="btn ${attTab==='week'?'':'ghost'}" data-atab="week">Icyumweru</button>
+        <button class="btn ${attTab==='month'?'':'ghost'}" data-atab="month">Ukwezi</button>
+        <button class="btn ${attTab==='term'?'':'ghost'}" data-atab="term">Igihembwe</button>
+      </div>`;
+    let content='';
+    if(attTab==='day'){
+      const rows = summarizeDay(dayRecords);
+      const table = rows.length===0 ? `<div class="empty-state">Nta bwitabire kuri iyi tariki.</div>` :
+        `<table><thead><tr><th>Izina</th><th>Yinjiye</th><th>Yasohotse</th></tr></thead><tbody>
+          ${rows.map(r=>{
+            const late = r.in && hhmm(r.in) > config.lateAfter;
+            const early = r.out && hhmm(r.out) < config.leaveBefore;
+            return `<tr><td class="name">${escapeHtml(r.name)}</td><td class="${r.in?(late?'late':'ontime'):'dash'}">${r.in?fmtTime(r.in):'—'}</td><td class="${r.out?(early?'late':'ontime'):'dash'}">${r.out?fmtTime(r.out):'—'}</td></tr>`;
+          }).join('')}
+        </tbody></table>`;
+      content = `<div class="row"><input type="date" id="period-date" value="${periodDate}"></div>${table}`;
+    } else if(attTab==='week'){
+      const empIds = (school.employees||[]).map(e=>e.id);
+      const empMap={}; (school.employees||[]).forEach(e=>empMap[e.id]=e.name);
+      const rows = empIds.map(id=>{
+        let present=0;
+        const cells = weekDates.map(d=>{
+          const dayRecs=(weekRecords[d]||[]).filter(r=>r.employeeId===id);
+          const inRec = dayRecs.filter(r=>r.type==='in').sort((a,b)=>a.time<b.time?-1:1)[0];
+          if(!inRec) return `<td class="dash">—</td>`;
+          present++;
+          const late = hhmm(inRec.time)>config.lateAfter;
+          return `<td class="${late?'late':'ontime'}">${hhmm(inRec.time)}</td>`;
+        }).join('');
+        return `<tr><td class="name">${escapeHtml(empMap[id])}</td>${cells}<td>${present}/5</td></tr>`;
+      });
+      const table = rows.length===0 ? `<div class="empty-state">Nta bakozi.</div>` :
+        `<table><thead><tr><th>Izina</th>${weekDates.map((d,i)=>`<th>${WEEKDAY_LABELS[i]}<br>${shortDate(d)}</th>`).join('')}<th>Tot</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+      content = `<div class="row"><input type="date" id="period-date" value="${periodDate}"></div>${table}`;
+    } else if(attTab==='month'){
+      content = `<div class="row"><input type="month" id="period-month" value="${periodMonth}"></div>${renderRangeStats()}`;
+    } else if(attTab==='term'){
+      const termPicker = (config.terms||[]).length===0
+        ? `<p style="font-size:13px; color:var(--rust);">Nta bihembwe byashyizweho n'Umuyobozi w'Umurenge.</p>`
+        : `<div class="row"><select id="term-select-school">${config.terms.map((t,i)=>`<option value="${i}" ${i===selectedTermIdx?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}</select></div>`;
+      content = `${termPicker}${renderRangeStats()}`;
+    }
+    return `${periodBtns}<div class="card">${content}</div>`;
+  }
+  function renderRangeStats(){
+    if(!rangeStats) return `<div class="loading">Turabika&hellip;</div>`;
+    if(rangeStats.perEmployee.length===0) return `<div class="empty-state">Nta bakozi.</div>`;
+    return `
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:8px 0 4px;">Ijanisha ry'ikigo (iminsi y'akazi: ${rangeStats.workdays})</p>
+      <div class="pct-big ${pctClass(rangeStats.schoolPct)}">${rangeStats.schoolPct}%</div>
+      <table style="margin-top:10px;"><thead><tr><th>Izina</th><th>Iminsi</th><th>Ijanisha</th></tr></thead><tbody>
+        ${rangeStats.perEmployee.map(e=>`<tr><td class="name">${escapeHtml(e.name)}</td><td>${e.present}/${e.workdays}</td><td class="${pctClass(e.pct)}">${e.pct}%</td></tr>`).join('')}
+      </tbody></table>
+    `;
+  }
+
+  // ---------- main render ----------
+  function render(loading){
+    const now = new Date();
+    const header = `
+      <header>
+        <div class="brand"><h1>${escapeHtml(config.sectorName)}</h1><p>Igenzura ry'ubwitabire</p></div>
+        <div class="clock">${fmtClock(now)}<span class="date">${fmtDateLong(now)}</span></div>
+      </header>`;
+    if(loading){ el.innerHTML = header + `<div class="loading">Turabika&hellip;</div>`; return; }
+    let body;
+    if(screen==='chooseSchool') body = renderChooseSchool();
+    else if(screen==='employee') body = renderEmployeeScreen();
+    else if(screen==='adminLogin') body = renderAdminLogin();
+    else if(screen==='sectorAdmin') body = renderSectorAdmin();
+    else body = renderSchoolAdmin();
+    el.innerHTML = header + body;
+    attachHandlers();
+  }
+
+  function attachHandlers(){
+    const q = (id)=>document.getElementById(id);
+    const on = (id, fn)=>{ const e=q(id); if(e) e.onclick=fn; };
+    document.querySelectorAll('[data-school]').forEach(b=> b.onclick = ()=> chooseSchool(b.dataset.school));
+    document.querySelectorAll('[data-emp]').forEach(b=> b.onclick = ()=> selectEmployee(b.dataset.emp));
+    on('to-admin', goAdminLogin);
+    on('to-school-list', backToLanding);
+    on('to-school-list-2', backToLanding);
+    on('to-school-list-3', backToLanding);
+    on('btn-in', ()=>logAttendance('in'));
+    on('btn-out', ()=>logAttendance('out'));
+    const codeInput = q('admin-code');
+    on('submit-code', ()=> checkAdminCode(codeInput.value));
+    if(codeInput) codeInput.onkeydown=(e)=>{ if(e.key==='Enter') checkAdminCode(codeInput.value); };
+
+    // sector tabs
+    on('tab-schools', ()=>switchSectorTab('schools'));
+    on('tab-report', ()=>switchSectorTab('report'));
+    on('tab-settings', ()=>switchSectorTab('settings'));
+    document.querySelectorAll('[data-speriod]').forEach(b=> b.onclick=()=>changeSectorReportPeriod(b.dataset.speriod));
+    const termSel = q('term-select'); if(termSel) termSel.onchange=()=>{ changeTerm(termSel.value); loadSectorReport('term').then(render); };
+    on('add-school', addSchool);
+    const nsn=q('new-school-name'), nsc=q('new-school-code');
+    if(nsn) nsn.oninput=(e)=>newSchoolName=e.target.value;
+    if(nsc) nsc.oninput=(e)=>newSchoolCode=e.target.value;
+    document.querySelectorAll('[data-open-school]').forEach(b=> b.onclick=()=>openSchoolFromSector(b.dataset.openSchool));
+    document.querySelectorAll('[data-remove-school]').forEach(b=> b.onclick=()=>removeSchool(b.dataset.removeSchool));
+    on('save-sector-name', ()=> updateSectorName(q('sector-name').value));
+    on('add-sector-code', ()=> addSectorAdminCode(q('new-sector-code').value));
+    document.querySelectorAll('[data-rm-code]').forEach(b=> b.onclick=()=>removeSectorAdminCode(parseInt(b.dataset.rmCode,10)));
+    on('add-term', ()=> addTerm(q('term-name').value, q('term-start').value, q('term-end').value));
+    document.querySelectorAll('[data-rm-term]').forEach(b=> b.onclick=()=>removeTerm(parseInt(b.dataset.rmTerm,10)));
+
+    // school admin
+    on('back-from-school', backToSectorFromSchool);
+    on('tab-employees', ()=>{ schoolTab='employees'; render(); });
+    on('tab-gps', ()=>{ schoolTab='gps'; render(); });
+    on('tab-attendance', ()=>{ schoolTab='attendance'; switchAttTab(attTab); });
+    on('add-emp', ()=> addEmployeeToSchool(q('new-emp-name').value));
+    document.querySelectorAll('[data-rm-emp]').forEach(b=> b.onclick=()=>removeEmployeeFromSchool(b.dataset.rmEmp));
+    on('capture-loc', captureSchoolLocation);
+    on('save-radius', ()=> updateSchoolRadius(q('radius-input').value));
+    document.querySelectorAll('[data-atab]').forEach(b=> b.onclick=()=>switchAttTab(b.dataset.atab));
+    const pd = q('period-date'); if(pd) pd.onchange=()=>changePeriodDate(pd.value);
+    const pm = q('period-month'); if(pm) pm.onchange=()=>changePeriodMonth(pm.value);
+    const ts2 = q('term-select-school'); if(ts2) ts2.onchange=()=>changeTerm(ts2.value);
+  }
+
+  setInterval(()=>{
+    const clockEl = document.querySelector('.clock');
+    if(clockEl){ const now=new Date(); clockEl.innerHTML = fmtClock(now)+'<span class="date">'+fmtDateLong(now)+'</span>'; }
+  }, 1000);
+
+  (async function init(){
+    await loadConfig();
+    await loadSchools();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
